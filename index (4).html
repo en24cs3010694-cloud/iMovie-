@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IMovies - Movie Ticket Booking Made Simple (MERN Stack)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { background-color: #0d0f14; color: #f8f9fa; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    .cinema-screen {
+      background: linear-gradient(180deg, #ff3b5c 0%, rgba(255,59,92,0.12) 100%);
+      height: 36px;
+      border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+      box-shadow: 0 12px 28px rgba(255, 59, 92, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      letter-spacing: 3px;
+      font-size: 0.8rem;
+      color: #fff;
+    }
+    .movie-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      background: #151922;
+      border: 1px solid #282f3f;
+    }
+    .movie-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.6);
+      border-color: #dc3545;
+    }
+    .seat-btn {
+      width: 42px;
+      height: 36px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0;
+    }
+    .toast-banner {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      min-width: 280px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const INITIAL_MOVIES = [
+      {
+        id: 'm_1',
+        title: 'Interstellar: IMAX Odyssey',
+        description: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanitys survival.',
+        genre: 'Sci-Fi',
+        language: 'English',
+        duration: '2h 49m',
+        rating: 9.4,
+        theatre: 'PVR Treasure Island',
+        location: 'Indore',
+        posterUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600',
+        showTimes: ['10:30 AM', '02:15 PM', '06:30 PM', '09:45 PM'],
+        price: 280,
+        bookedSeats: { '2026-10-27_06:30 PM': ['B3', 'B4', 'C5', 'C6'] }
+      },
+      {
+        id: 'm_2',
+        title: 'Stree 2: Sarkate Ka Aatank',
+        description: 'The town of Chanderi faces a new supernatural menace while Vicky and his friends unite to save everyone.',
+        genre: 'Comedy',
+        language: 'Hindi',
+        duration: '2h 27m',
+        rating: 8.8,
+        theatre: 'INOX C21 Mall',
+        location: 'Indore',
+        posterUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600',
+        showTimes: ['11:00 AM', '03:00 PM', '07:00 PM', '10:15 PM'],
+        price: 240,
+        bookedSeats: { '2026-10-27_07:00 PM': ['A1', 'A2', 'D4'] }
+      },
+      {
+        id: 'm_3',
+        title: 'Kalki 2898 AD',
+        description: 'A modern-day avatar of Vishnu descends to Earth to protect the world from dark futuristic forces.',
+        genre: 'Action',
+        language: 'Hindi',
+        duration: '3h 01m',
+        rating: 9.0,
+        theatre: 'Cinepolis Phoenix Citadel',
+        location: 'Indore',
+        posterUrl: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=600',
+        showTimes: ['10:00 AM', '01:45 PM', '05:30 PM', '09:30 PM'],
+        price: 300,
+        bookedSeats: { '2026-10-27_05:30 PM': ['C2', 'C3'] }
+      },
+      {
+        id: 'm_4',
+        title: 'Dune: Part Two',
+        description: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators.',
+        genre: 'Sci-Fi',
+        language: 'English',
+        duration: '2h 46m',
+        rating: 9.2,
+        theatre: 'PVR Jio World Plaza',
+        location: 'Mumbai',
+        posterUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600',
+        showTimes: ['12:00 PM', '04:00 PM', '08:00 PM'],
+        price: 350,
+        bookedSeats: {}
+      }
+    ];
+
+    const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E'];
+    const SEAT_COLS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+    function App() {
+      const [user, setUser] = useState({ id: 'u_admin', name: 'Naman (Admin)', email: 'admin@imovies.com', role: 'admin' });
+      const [activeTab, setActiveTab] = useState('movies');
+      const [movies, setMovies] = useState(INITIAL_MOVIES);
+      const [bookings, setBookings] = useState([
+        {
+          id: 'BK849201',
+          movieId: 'm_1',
+          movieTitle: 'Interstellar: IMAX Odyssey',
+          theatreName: 'PVR Treasure Island, Indore',
+          showDate: '2026-10-27',
+          showTime: '06:30 PM',
+          seats: ['B3', 'B4'],
+          totalAmount: 560,
+          paymentMethod: 'UPI',
+          status: 'Confirmed'
+        }
+      ]);
+
+      const [search, setSearch] = useState('');
+      const [genre, setGenre] = useState('');
+      const [language, setLanguage] = useState('');
+      const [location, setLocation] = useState('');
+
+      const [selectedMovie, setSelectedMovie] = useState(null);
+      const [showDate, setShowDate] = useState('2026-10-27');
+      const [showTime, setShowTime] = useState('06:30 PM');
+      const [selectedSeats, setSelectedSeats] = useState([]);
+      const [paymentMethod, setPaymentMethod] = useState('UPI');
+      const [toastMsg, setToastMsg] = useState(null);
+
+      const [isRegister, setIsRegister] = useState(false);
+      const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', role: 'user' });
+      const [newMovie, setNewMovie] = useState({
+        title: '', genre: 'Sci-Fi', language: 'English', theatre: 'PVR Treasure Island', location: 'Indore', price: 250, duration: '2h 30m', posterUrl: ''
+      });
+
+      const notify = (msg, type = 'success') => {
+        setToastMsg({ msg, type });
+        setTimeout(() => setToastMsg(null), 3000);
+      };
+
+      const filteredMovies = movies.filter(m => {
+        const matchSearch = m.title.toLowerCase().includes(search.toLowerCase()) || m.theatre.toLowerCase().includes(search.toLowerCase());
+        const matchGenre = !genre || m.genre === genre;
+        const matchLang = !language || m.language === language;
+        const matchLoc = !location || m.location === location;
+        return matchSearch && matchGenre && matchLang && matchLoc;
+      });
+
+      const toggleSeat = (seatId, isBooked) => {
+        if (isBooked) return;
+        setSelectedSeats(prev => prev.includes(seatId) ? prev.filter(s => s !== seatId) : [...prev, seatId]);
+      };
+
+      const confirmBooking = () => {
+        if (!user) {
+          notify('Please sign in first to book tickets!', 'warning');
+          setActiveTab('auth');
+          return;
+        }
+        if (selectedSeats.length === 0) {
+          notify('Please select at least 1 seat on the seat map!', 'warning');
+          return;
+        }
+        const key = `${showDate}_${showTime}`;
+        const updatedMovies = movies.map(m => {
+          if (m.id === selectedMovie.id) {
+            const existing = m.bookedSeats[key] || [];
+            return {
+              ...m,
+              bookedSeats: { ...m.bookedSeats, [key]: [...existing, ...selectedSeats] }
+            };
+          }
+          return m;
+        });
+        setMovies(updatedMovies);
+
+        const newBk = {
+          id: 'BK' + Math.floor(100000 + Math.random() * 900000),
+          movieId: selectedMovie.id,
+          movieTitle: selectedMovie.title,
+          theatreName: `${selectedMovie.theatre}, ${selectedMovie.location}`,
+          showDate,
+          showTime,
+          seats: selectedSeats,
+          totalAmount: selectedSeats.length * selectedMovie.price,
+          paymentMethod,
+          status: 'Confirmed'
+        };
+        setBookings([newBk, ...bookings]);
+        setSelectedSeats([]);
+        setSelectedMovie(null);
+        setActiveTab('bookings');
+        notify(`Booking Confirmed! Ticket ID: ${newBk.id}`);
+      };
+
+      const cancelBooking = (id) => {
+        const target = bookings.find(b => b.id === id);
+        if (!target) return;
+        setBookings(bookings.map(b => b.id === id ? { ...b, status: 'Cancelled' } : b));
+        const key = `${target.showDate}_${target.showTime}`;
+        setMovies(movies.map(m => {
+          if (m.id === target.movieId) {
+            const current = m.bookedSeats[key] || [];
+            return {
+              ...m,
+              bookedSeats: { ...m.bookedSeats, [key]: current.filter(s => !target.seats.includes(s)) }
+            };
+          }
+          return m;
+        }));
+        notify('Booking cancelled & seats released in real time!', 'info');
+      };
+
+      const handleAuth = (e) => {
+        e.preventDefault();
+        const role = authForm.email.includes('admin') ? 'admin' : authForm.role;
+        const loggedUser = {
+          id: 'u_' + Date.now(),
+          name: authForm.name || (role === 'admin' ? 'Naman (Admin)' : 'Naman Student'),
+          email: authForm.email,
+          role
+        };
+        setUser(loggedUser);
+        notify(`Logged in as ${loggedUser.name} (${loggedUser.role})`);
+        setActiveTab('movies');
+      };
+
+      const handleAddMovie = (e) => {
+        e.preventDefault();
+        const created = {
+          id: 'm_' + Date.now(),
+          ...newMovie,
+          rating: 8.9,
+          price: Number(newMovie.price) || 250,
+          posterUrl: newMovie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600',
+          showTimes: ['10:30 AM', '02:15 PM', '06:30 PM', '09:45 PM'],
+          bookedSeats: {}
+        };
+        setMovies([created, ...movies]);
+        setNewMovie({ title: '', genre: 'Sci-Fi', language: 'English', theatre: 'PVR Treasure Island', location: 'Indore', price: 250, duration: '2h 30m', posterUrl: '' });
+        notify(`Added "${created.title}" to IMovies catalog!`);
+        setActiveTab('movies');
+      };
+
+      return (
+        <div className="min-vh-100 d-flex flex-column">
+          {toastMsg && (
+            <div className={`alert alert-${toastMsg.type} toast-banner shadow-lg fw-semibold`}>
+              {toastMsg.msg}
+            </div>
+          )}
+
+          <nav className="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-secondary px-4 py-3">
+            <a className="navbar-brand fw-bold text-danger fs-4" href="#top" onClick={() => { setSelectedMovie(null); setActiveTab('movies'); }}>
+              🎬 IMovies <span className="badge bg-dark border border-secondary text-secondary fs-6 ms-1">MERN</span>
+            </a>
+            <div className="ms-auto d-flex flex-wrap gap-2 align-items-center">
+              <button className={`btn btn-sm ${activeTab === 'movies' && !selectedMovie ? 'btn-danger' : 'btn-outline-light'}`} onClick={() => { setSelectedMovie(null); setActiveTab('movies'); }}>
+                Movies
+              </button>
+              <button className={`btn btn-sm ${activeTab === 'bookings' ? 'btn-danger' : 'btn-outline-light'}`} onClick={() => { setSelectedMovie(null); setActiveTab('bookings'); }}>
+                My Bookings ({bookings.filter(b => b.status === 'Confirmed').length})
+              </button>
+              {user?.role === 'admin' && (
+                <button className={`btn btn-sm ${activeTab === 'admin' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning'}`} onClick={() => { setSelectedMovie(null); setActiveTab('admin'); }}>
+                  Admin Panel
+                </button>
+              )}
+              {user ? (
+                <div className="d-flex align-items-center gap-2 ms-2">
+                  <span className="badge bg-secondary py-2 px-3">{user.name}</span>
+                  <button className="btn btn-sm btn-outline-danger" onClick={() => { setUser(null); notify('Logged out successfully', 'info'); }}>
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button className="btn btn-sm btn-danger" onClick={() => setActiveTab('auth')}>Login / Register</button>
+              )}
+            </div>
+          </nav>
+
+          <div className="container py-4 flex-grow-1">
+            {activeTab === 'movies' && !selectedMovie && (
+              <>
+                <div className="p-4 mb-4 rounded-3 border border-secondary" style={{ background: 'linear-gradient(135deg, #1b111c 0%, #101522 100%)' }}>
+                  <h2 className="fw-bold mb-1">Book Movie Tickets Online</h2>
+                  <p className="text-secondary mb-3">Real-time seat availability, instant confirmation, and zero convenience fee across theatres.</p>
+                  <div className="row g-2">
+                    <div className="col-md-4">
+                      <input type="text" className="form-control bg-dark text-light border-secondary" placeholder="🔍 Search movie or theatre..." value={search} onChange={e => setSearch(e.target.value)} />
+                    </div>
+                    <div className="col-md-3">
+                      <select className="form-select bg-dark text-light border-secondary" value={genre} onChange={e => setGenre(e.target.value)}>
+                        <option value="">All Genres</option>
+                        <option value="Sci-Fi">Sci-Fi</option>
+                        <option value="Action">Action</option>
+                        <option value="Comedy">Comedy</option>
+                      </select>
+                    </div>
+                    <div className="col-md-3">
+                      <select className="form-select bg-dark text-light border-secondary" value={language} onChange={e => setLanguage(e.target.value)}>
+                        <option value="">All Languages</option>
+                        <option value="English">English</option>
+                        <option value="Hindi">Hindi</option>
+                      </select>
+                    </div>
+                    <div className="col-md-2">
+                      <select className="form-select bg-dark text-light border-secondary" value={location} onChange={e => setLocation(e.target.value)}>
+                        <option value="">All Cities</option>
+                        <option value="Indore">Indore</option>
+                        <option value="Mumbai">Mumbai</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-4">
+                  {filteredMovies.map(m => (
+                    <div className="col-md-6 col-lg-3" key={m.id}>
+                      <div className="card movie-card text-light h-100 rounded-3 overflow-hidden">
+                        <img src={m.posterUrl} alt={m.title} className="card-img-top" style={{ height: '270px', objectFit: 'cover' }} />
+                        <div className="card-body d-flex flex-column">
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <span className="badge bg-danger">{m.genre}</span>
+                            <span className="text-warning fw-bold small">★ {m.rating}/10</span>
+                          </div>
+                          <h5 className="card-title fw-bold mb-1">{m.title}</h5>
+                          <p className="small text-secondary mb-1">{m.language} • {m.duration}</p>
+                          <p className="small text-info mb-3">📍 {m.theatre}, {m.location}</p>
+                          <button
+                            className="btn btn-danger mt-auto w-100 fw-semibold"
+                            onClick={() => {
+                              setSelectedMovie(m);
+                              setShowTime(m.showTimes[0]);
+                              setSelectedSeats([]);
+                            }}
+                          >
+                            Select Seats • ₹{m.price}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {selectedMovie && (
+              <div className="card bg-black text-light border-secondary p-4 rounded-3 shadow">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                  <div>
+                    <h3 className="fw-bold text-danger mb-0">{selectedMovie.title}</h3>
+                    <p className="text-secondary mb-0">{selectedMovie.theatre}, {selectedMovie.location} • {selectedMovie.language} • ₹{selectedMovie.price}/ticket</p>
+                  </div>
+                  <button className="btn btn-outline-light btn-sm" onClick={() => setSelectedMovie(null)}>← Back to Movies</button>
+                </div>
+
+                <div className="row g-3 mb-4">
+                  <div className="col-md-4">
+                    <label className="form-label small text-secondary">Show Date</label>
+                    <input type="date" className="form-control bg-dark text-light border-secondary" value={showDate} onChange={e => setShowDate(e.target.value)} />
+                  </div>
+                  <div className="col-md-8">
+                    <label className="form-label small text-secondary">Available Showtimes</label>
+                    <div className="d-flex gap-2 flex-wrap">
+                      {selectedMovie.showTimes.map(time => (
+                        <button
+                          key={time}
+                          className={`btn btn-sm px-3 ${showTime === time ? 'btn-danger fw-bold' : 'btn-outline-secondary text-light'}`}
+                          onClick={() => { setShowTime(time); setSelectedSeats([]); }}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center my-3">
+                  <div className="cinema-screen mx-auto mb-4" style={{ maxWidth: '480px' }}>
+                    ALL EYES THIS WAY — DOLBY ATMOS SCREEN
+                  </div>
+
+                  {SEAT_ROWS.map(row => (
+                    <div key={row} className="d-flex justify-content-center align-items-center gap-2 mb-2">
+                      <span className="me-2 fw-bold text-secondary" style={{ width: '22px' }}>{row}</span>
+                      {SEAT_COLS.map(col => {
+                        const seatId = `${row}${col}`;
+                        const key = `${showDate}_${showTime}`;
+                        const isBooked = (selectedMovie.bookedSeats?.[key] || []).includes(seatId);
+                        const isSelected = selectedSeats.includes(seatId);
+                        return (
+                          <button
+                            key={seatId}
+                            disabled={isBooked}
+                            onClick={() => toggleSeat(seatId, isBooked)}
+                            className={`btn seat-btn ${isBooked ? 'btn-secondary disabled' : isSelected ? 'btn-success' : 'btn-outline-light'}`}
+                          >
+                            {seatId}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+
+                  <div className="d-flex justify-content-center gap-4 mt-3 small text-secondary">
+                    <span>⬜ Available</span>
+                    <span>🟩 Selected</span>
+                    <span>⬛ Sold Out</span>
+                  </div>
+                </div>
+
+                <div className="border-top border-secondary pt-3 mt-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                  <div>
+                    <div>Selected Seats: <strong className="text-warning">{selectedSeats.join(', ') || 'None'}</strong></div>
+                    <div>Total Payable: <strong className="text-success fs-5">₹{selectedSeats.length * selectedMovie.price}</strong></div>
+                  </div>
+                  <div className="d-flex gap-2 align-items-center">
+                    <select className="form-select bg-dark text-light border-secondary" style={{ width: '190px' }} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                      <option value="UPI">UPI (GPay / PhonePe)</option>
+                      <option value="Card">Credit / Debit Card</option>
+                      <option value="NetBanking">NetBanking</option>
+                    </select>
+                    <button className="btn btn-danger fw-bold px-4" onClick={confirmBooking}>
+                      Pay & Book Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'bookings' && (
+              <div>
+                <h4 className="fw-bold mb-3">🎟️ My Bookings & Tickets</h4>
+                <div className="row g-3">
+                  {bookings.map(b => (
+                    <div className="col-md-6" key={b.id}>
+                      <div className="card bg-black text-light border-secondary p-3">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <h5 className="fw-bold text-danger mb-0">{b.movieTitle}</h5>
+                          <span className={`badge ${b.status === 'Confirmed' ? 'bg-success' : 'bg-secondary'}`}>{b.status}</span>
+                        </div>
+                        <p className="small text-secondary mb-1">Booking ID: <strong>{b.id}</strong> • {b.theatreName}</p>
+                        <p className="mb-1">Show: <strong>{b.showDate}</strong> at <strong>{b.showTime}</strong></p>
+                        <p className="mb-2">Seats: <strong className="text-warning">{b.seats.join(', ')}</strong> • Total Paid: <strong>₹{b.totalAmount}</strong> ({b.paymentMethod})</p>
+                        {b.status === 'Confirmed' && (
+                          <button className="btn btn-sm btn-outline-danger align-self-start" onClick={() => cancelBooking(b.id)}>
+                            Cancel Booking & Instant Refund
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'admin' && (
+              <div className="card bg-black text-light border-secondary p-4">
+                <h4 className="fw-bold text-warning mb-3">⚙️ Admin Movie, Theatre & Show Management</h4>
+                <form onSubmit={handleAddMovie} className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label small">Movie Title</label>
+                    <input type="text" className="form-control bg-dark text-light border-secondary" required placeholder="e.g. Pushpa 2: The Rule" value={newMovie.title} onChange={e => setNewMovie({ ...newMovie, title: e.target.value })} />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label small">Genre</label>
+                    <select className="form-select bg-dark text-light border-secondary" value={newMovie.genre} onChange={e => setNewMovie({ ...newMovie, genre: e.target.value })}>
+                      <option value="Action">Action</option>
+                      <option value="Sci-Fi">Sci-Fi</option>
+                      <option value="Comedy">Comedy</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label small">Language</label>
+                    <select className="form-select bg-dark text-light border-secondary" value={newMovie.language} onChange={e => setNewMovie({ ...newMovie, language: e.target.value })}>
+                      <option value="Hindi">Hindi</option>
+                      <option value="English">English</option>
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label small">Theatre</label>
+                    <input type="text" className="form-control bg-dark text-light border-secondary" value={newMovie.theatre} onChange={e => setNewMovie({ ...newMovie, theatre: e.target.value })} />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label small">City / Location</label>
+                    <input type="text" className="form-control bg-dark text-light border-secondary" value={newMovie.location} onChange={e => setNewMovie({ ...newMovie, location: e.target.value })} />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label small">Ticket Price (₹)</label>
+                    <input type="number" className="form-control bg-dark text-light border-secondary" value={newMovie.price} onChange={e => setNewMovie({ ...newMovie, price: e.target.value })} />
+                  </div>
+                  <div className="col-12">
+                    <button type="submit" className="btn btn-warning fw-bold">Publish Movie & Showtimes</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'auth' && (
+              <div className="card bg-black text-light border-secondary p-4 mx-auto" style={{ maxWidth: '440px' }}>
+                <h4 className="fw-bold text-center mb-3">{isRegister ? 'Register Account' : 'Sign In with JWT'}</h4>
+                <form onSubmit={handleAuth}>
+                  {isRegister && (
+                    <div className="mb-3">
+                      <label className="form-label small">Full Name</label>
+                      <input type="text" className="form-control bg-dark text-light border-secondary" required value={authForm.name} onChange={e => setAuthForm({ ...authForm, name: e.target.value })} />
+                    </div>
+                  )}
+                  <div className="mb-3">
+                    <label className="form-label small">Email Address (use admin@imovies.com for Admin)</label>
+                    <input type="email" className="form-control bg-dark text-light border-secondary" required value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label small">Password</label>
+                    <input type="password" className="form-control bg-dark text-light border-secondary" required value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
+                  </div>
+                  <button type="submit" className="btn btn-danger w-100 fw-bold mb-2">{isRegister ? 'Create Account' : 'Login'}</button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          <footer className="bg-black text-secondary text-center py-3 border-top border-secondary small">
+            IMovies Cinema Management System • Built with MongoDB, Express.js, React.js & Node.js (MERN Stack)
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
